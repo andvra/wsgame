@@ -1,0 +1,1 @@
+We're using JSON for communication since it represents floats in a way more cross-platform than binary. Of course binary is more efficient, but that's not the focus atm

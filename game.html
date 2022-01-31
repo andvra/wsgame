@@ -2,6 +2,9 @@
 <body>
 <canvas id="myCanvas" width="800" height="600" style="border:1px solid #000000;">
 </canvas>
+<input type="text" id="msg"/>
+<button onclick="ws_send_message(get_message());">Send message</button>
+<input type="text" id="log" disabled/>
 <script>
 var c = document.getElementById("myCanvas");
 var ctx = c.getContext("2d");
@@ -89,20 +92,62 @@ function draw() {
 	ctx.lineTo(pt2.cur_x, pt2.cur_y);
 	ctx.stroke();
 }
+var ws;
+function ws_init() {
+	ws = new WebSocket("ws://192.168.1.70:9002");
+	ws.onopen = function(e) {
+		console.log('WebSocket Opened. Sending message..');
+		ws_send_message("Hi I'm a client" + Math.random());
+	};
 
-function communicate_ws() {
-	var ws = new WebSocket("ws://192.168.1.70:9002");
-	  ws.onopen = function(e) {
-		console.log('WebSocket Opened. Sending "Hello"');
-		ws.send('AN AMAZING MESSAGE FROM THE WEB PAGE. Here is a random number from the client: ' + Math.random());
-	  };
-
-	  ws.onmessage = function(e) {
+	ws.onmessage = function(e) {
 		console.log('Received:', e.data);
-	  };
+	};
 }
-communicate_ws();
-//setInterval(draw, 1);
+function ws_send_message(msg) {
+	var json = {
+		"msg": msg
+	}
+	ws.send(JSON.stringify(json));
+}
+function get_message() {
+	var msg = document.getElementById('msg').value;
+	if(!msg){
+		msg="Default message from client";
+	}
+	return msg;
+}
+ws_init();
+setInterval(draw, 10);
+const log = document.getElementById('log');
+var keys = [false,false,false,false];
+
+function logKeyDown(e) {
+	const kc=e.keyCode;
+	// TODO: We have the structure for key handling in place.
+	//	Handle the different keys we are interested in,
+	//	and send corresponding messages over the websocket connection
+	switch(kc)
+	{
+	case 65: keys[0]=true;break;
+	case 68: keys[1]=true;break;
+	}
+	console.log(keys);
+	log.value=keys;
+}
+function logKeyUp(e) {
+	const kc=e.keyCode;
+	switch(kc)
+	{
+	case 65: keys[0]=false;break;
+	case 68: keys[1]=false;break;
+	}
+	console.log(keys);
+	log.value=keys;
+}
+document.addEventListener('keydown', logKeyDown);
+document.addEventListener('keyup', logKeyUp);
+
 </script>
 </body>
 </html>

@@ -11,15 +11,18 @@ broadcast_server::broadcast_server()
     m_server.set_message_handler(bind(&broadcast_server::on_message, this, ::_1, ::_2));
 }
 
-void broadcast_server::run(uint16_t port) {
+void broadcast_server::run(uint16_t port, std::function<void(std::string)> client_message_callback) {
     // listen on specified port
     m_server.listen(port);
 
     // Start the server accept loop
     m_server.start_accept();
 
+    client_msg_callback = client_message_callback;
+
     // Start the ASIO io_service run loop
     try {
+        std::cout << "Starting up server at port " << port << "..." << std::endl;
         m_server.run();
     }
     catch (const std::exception& e) {
@@ -50,9 +53,22 @@ void broadcast_server::on_message(connection_hdl hdl, server::message_ptr msg) {
     {
         lock_guard<mutex> guard(m_action_lock);
         //std::cout << "on_message" << std::endl;
+
         m_actions.push(action(MESSAGE, hdl, msg));
     }
     m_action_cond.notify_one();
+}
+
+void broadcast_server::post_data(std::string msg)
+{
+    lock_guard<mutex> guard(m_connection_lock);
+    con_list::iterator it;
+
+    for (it = m_connections.begin(); it != m_connections.end(); ++it)
+    {
+        auto con = m_server.get_con_from_hdl(*it);
+        con->send(msg, websocketpp::frame::opcode::text);
+    }
 }
 
 void broadcast_server::process_messages() {
@@ -78,11 +94,8 @@ void broadcast_server::process_messages() {
         }
         else if (a.type == MESSAGE) {
             lock_guard<mutex> guard(m_connection_lock);
-
-            con_list::iterator it;
-            for (it = m_connections.begin(); it != m_connections.end(); ++it) {
-                m_server.send(*it, a.msg);
-            }
+            auto payload = a.msg.get()->get_payload();
+            client_msg_callback(payload);
         }
         else {
             // undefined.
