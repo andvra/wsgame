@@ -1,153 +1,213 @@
 <html>
 <body>
-<canvas id="myCanvas" width="800" height="600" style="border:1px solid #000000;">
-</canvas>
-<input type="text" id="msg"/>
-<button onclick="ws_send_message(get_message());">Send message</button>
-<input type="text" id="log" disabled/>
-<script>
-var c = document.getElementById("myCanvas");
-var ctx = c.getContext("2d");
-var t_last=(new Date()).getTime();
-var fps_update_t=0.5;
-var num_frames=0;
-var fps=0;
-var last_fps_update=(new Date()).getTime();
-var bg=ctx.createImageData(c.width,c.height);
-var d=bg.data;
-var pt1={
-	move_t: 0,
-	start_x: 10,
-	start_y: 10,
-	cur_x:10,
-	cur_y:10,
-	target_x:500,
-	target_y:500,
-	max_speed:1};
-var pt2={
-	move_t: 0,
-	start_x:100,
-	start_y:100,
-	cur_x:100,
-	cur_y:100,
-	target_x:500,
-	target_y:400,
-	max_speed:2};
+    <canvas id="myCanvas" width="800" height="600" style="border:1px solid #000000;">
+    </canvas>
+    <input type="text" id="msg" />
+    <button onclick="ws_send_message(get_message());">Send message</button>
+    <input type="text" id="log" disabled />
+    <script>
+        var c = document.getElementById("myCanvas");
+        var ctx = c.getContext("2d");
+        var t_last = (new Date()).getTime();
+        var fps_update_t = 0.5;
+        var num_frames = 0;
+        var fps = 0;
+        var last_fps_update = (new Date()).getTime();
+        var bg = ctx.createImageData(c.width, c.height);
+        var d = bg.data;
+        var pt1 = {
+            move_t: 0,
+            start_x: 10,
+            start_y: 10,
+            cur_x: 10,
+            cur_y: 10,
+            target_x: 500,
+            target_y: 500,
+            max_speed: 1
+        };
+        var pt2 = {
+            move_t: 0,
+            start_x: 100,
+            start_y: 100,
+            cur_x: 100,
+            cur_y: 100,
+            target_x: 500,
+            target_y: 400,
+            max_speed: 2
+        };
 
-for(var i=0;i<c.width;i++){
-	for(var j=0;j<c.height;j++) {
-		d[4*(i+c.width*j)+0]=(i+10*j)%256;
-		d[4*(i+c.width*j)+1]=(5*5+2*j)%123;
-		d[4*(i+c.width*j)+2]=50+(i+j)%100;
-		d[4*(i+c.width*j)+3]=255;
-	}
-}
-function update_pt(t_delta, pt) {
-	const new_move_t = pt.move_t + t_delta
-	const diff_x=pt.target_x-pt.cur_x;
-	const diff_y=pt.target_y-pt.cur_y;
-	const tot_diff = Math.sqrt(Math.pow(diff_x,2)+Math.pow(diff_y,2));
-	var pt_new_x=0;
-	var pt_new_y=0;
-	if(tot_diff-pt.max_speed<0.5) {
-		pt_new_x = pt.target_x;
-		pt_new_y = pt.target_y;
-	}else {
-		const acc=0.01;
-		const use_speed = Math.min(pt.max_speed, acc*new_move_t);
-		const change_x = use_speed*diff_x/tot_diff;
-		const change_y = use_speed*diff_y/tot_diff;
-		pt_new_x = pt.cur_x+change_x;
-		pt_new_y = pt.cur_y+change_y;
-	}
+        for (var i = 0; i < c.width; i++) {
+            for (var j = 0; j < c.height; j++) {
+                d[4 * (i + c.width * j) + 0] = (i + 10 * j) % 256;
+                d[4 * (i + c.width * j) + 1] = (5 * 5 + 2 * j) % 123;
+                d[4 * (i + c.width * j) + 2] = 50 + (i + j) % 100;
+                d[4 * (i + c.width * j) + 3] = 255;
+            }
+        }
+        function update_pt(t_delta, pt) {
+            const new_move_t = pt.move_t + t_delta
+            const diff_x = pt.target_x - pt.cur_x;
+            const diff_y = pt.target_y - pt.cur_y;
+            const tot_diff = Math.sqrt(Math.pow(diff_x, 2) + Math.pow(diff_y, 2));
+            var pt_new_x = 0;
+            var pt_new_y = 0;
+            if (tot_diff - pt.max_speed < 0.5) {
+                pt_new_x = pt.target_x;
+                pt_new_y = pt.target_y;
+            } else {
+                const acc = 0.01;
+                const use_speed = Math.min(pt.max_speed, acc * new_move_t);
+                const change_x = use_speed * diff_x / tot_diff;
+                const change_y = use_speed * diff_y / tot_diff;
+                pt_new_x = pt.cur_x + change_x;
+                pt_new_y = pt.cur_y + change_y;
+            }
 
-	const ret = { ...pt, cur_x: pt_new_x, cur_y: pt_new_y, move_t: new_move_t };
-	return ret;
-}
+            const ret = { ...pt, cur_x: pt_new_x, cur_y: pt_new_y, move_t: new_move_t };
+            return ret;
+        }
 
-function update_pts(t_delta) {
-	pt1 = update_pt(t_delta, pt1);
-	pt2 = update_pt(t_delta, pt2);
-}
+        function update_pts(t_delta) {
+            pt1 = update_pt(t_delta, pt1);
+            pt2 = update_pt(t_delta, pt2);
+        }
 
-function draw() {
-	var t_now=(new Date()).getTime();
-	var t_delta = (t_now-t_last)/1000; // Get in in seconds
-	num_frames++;
-	if(t_now-last_fps_update>fps_update_t) {
+        function factorial(v) {
+            let ret = 1;
 
-		fps = 1000*num_frames/(t_now-last_fps_update);
-		last_fps_update=t_now;
-		num_frames=0;
-	}
+            for (let i = 2; i <= v; i++) {
+                ret = ret * i;
+            }
 
-	update_pts(t_delta);
-	ctx.clearRect(0, 0, c.width, c.height);
-	ctx.beginPath();
+            return ret;
+        }
 
-	ctx.putImageData(bg,0,0);
-	ctx.font = "30px Arial";
-	ctx.fillText("FPS: " + fps.toFixed(2), 10, 50);
-	ctx.moveTo(pt1.cur_x, pt1.cur_y);
-	ctx.lineTo(pt2.cur_x, pt2.cur_y);
-	ctx.stroke();
-}
-var ws;
-function ws_init() {
-	ws = new WebSocket("ws://192.168.1.70:9002");
-	ws.onopen = function(e) {
-		console.log('WebSocket Opened. Sending message..');
-		ws_send_message("Hi I'm a client" + Math.random());
-	};
+        function binomial_coeff(n, k) {
+            return factorial(n) / (factorial(k) * factorial(n - k));
+        }
 
-	ws.onmessage = function(e) {
-		console.log('Received:', e.data);
-	};
-}
-function ws_send_message(msg) {
-	var json = {
-		"msg": msg
-	}
-	ws.send(JSON.stringify(json));
-}
-function get_message() {
-	var msg = document.getElementById('msg').value;
-	if(!msg){
-		msg="Default message from client";
-	}
-	return msg;
-}
-ws_init();
-setInterval(draw, 10);
-const log = document.getElementById('log');
-var keys = [false,false,false,false];
+        function bezier(points, t) {
+            var x = 0;
+            var y = 0;
 
-function logKeyDown(e) {
-	const kc=e.keyCode;
-	// TODO: We have the structure for key handling in place.
-	//	Handle the different keys we are interested in,
-	//	and send corresponding messages over the websocket connection
-	switch(kc)
-	{
-	case 65: keys[0]=true;break;
-	case 68: keys[1]=true;break;
-	}
-	console.log(keys);
-	log.value=keys;
-}
-function logKeyUp(e) {
-	const kc=e.keyCode;
-	switch(kc)
-	{
-	case 65: keys[0]=false;break;
-	case 68: keys[1]=false;break;
-	}
-	console.log(keys);
-	log.value=keys;
-}
-document.addEventListener('keydown', logKeyDown);
-document.addEventListener('keyup', logKeyUp);
+            let n = points.length - 1;
+            for (let i = 0; i <= n; i++) {
+                const binom = binomial_coeff(n, i);
+                const f = binom * Math.pow((1 - t), n - i) * Math.pow(t, i);
+                x += f * points[i].x;
+                y += f * points[i].y;
+            }
 
-</script>
+            return { x: x, y: y };
+        }
+
+        function draw() {
+            var t_now = (new Date()).getTime();
+            var t_delta = (t_now - t_last) / 1000; // Get in in seconds
+            num_frames++;
+            if (t_now - last_fps_update > fps_update_t) {
+
+                fps = 1000 * num_frames / (t_now - last_fps_update);
+                last_fps_update = t_now;
+                num_frames = 0;
+            }
+
+            update_pts(t_delta);
+            ctx.clearRect(0, 0, c.width, c.height);
+
+            ctx.beginPath();
+            ctx.putImageData(bg, 0, 0);
+            ctx.font = "30px Arial";
+            ctx.fillText("FPS: " + fps.toFixed(2), 10, 50);
+            ctx.strokeStyle = "black"; // Green path
+            ctx.moveTo(pt1.cur_x, pt1.cur_y);
+            ctx.lineTo(pt2.cur_x, pt2.cur_y);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.strokeStyle = "black"; // Green path
+            const pts = [
+                { x: 100, y: 200 },
+                { x: 80, y: 100 },
+                { x: 200, y: 100 },
+                { x: 230, y: 200 },
+                { x: 300, y: 120 }
+            ];
+            for (var i = 0; i < 100; i++) {
+                const bezier_val_start = bezier(pts, i / 100);
+                const bezier_val_end = bezier(pts, (i + 1) / 100);
+                var t_variation = ((new Date()).getTime()+i) / 1000;
+                var x_start = bezier_val_start.x+ 10*Math.cos(t_variation);
+                var x_end = bezier_val_end.x + 10*Math.cos(t_variation);;
+                var y_start = bezier_val_start.y;
+                var y_end = bezier_val_end.y;
+                ctx.moveTo(x_start, y_start);
+                ctx.lineTo(x_end, y_end);
+            }
+            ctx.stroke();
+
+
+            for (var i = 0; i < pts.length; i++) {
+                ctx.beginPath();
+                ctx.strokeStyle = "red"; // Green path
+                ctx.arc(pts[i].x, pts[i].y, 5, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+
+        }
+        var ws;
+        function ws_init() {
+            ws = new WebSocket("ws://192.168.1.70:9002");
+            ws.onopen = function (e) {
+                console.log('WebSocket Opened. Sending message..');
+                ws_send_message("Hi I'm a client" + Math.random());
+            };
+
+            ws.onmessage = function (e) {
+                console.log('Received:', e.data);
+            };
+        }
+        function ws_send_message(msg) {
+            var json = {
+                "msg": msg
+            }
+            ws.send(JSON.stringify(json));
+        }
+        function get_message() {
+            var msg = document.getElementById('msg').value;
+            if (!msg) {
+                msg = "Default message from client";
+            }
+            return msg;
+        }
+        ws_init();
+        setInterval(draw, 10);
+        const log = document.getElementById('log');
+        var keys = [false, false, false, false];
+
+        function logKeyDown(e) {
+            const kc = e.keyCode;
+            // TODO: We have the structure for key handling in place.
+            //	Handle the different keys we are interested in,
+            //	and send corresponding messages over the websocket connection
+            switch (kc) {
+                case 65: keys[0] = true; break;
+                case 68: keys[1] = true; break;
+            }
+            console.log(keys);
+            log.value = keys;
+        }
+        function logKeyUp(e) {
+            const kc = e.keyCode;
+            switch (kc) {
+                case 65: keys[0] = false; break;
+                case 68: keys[1] = false; break;
+            }
+            log.value = keys;
+        }
+        document.addEventListener('keydown', logKeyDown);
+        document.addEventListener('keyup', logKeyUp);
+
+    </script>
 </body>
 </html>
