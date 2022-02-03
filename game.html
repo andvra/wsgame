@@ -101,6 +101,12 @@
             return { x: x, y: y };
         }
 
+        function normalize(x, y) {
+            const d = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
+
+            return { x: x / d, y: y / d };
+        }
+
         function draw() {
             var t_now = (new Date()).getTime();
             var t_delta = (t_now - t_last) / 1000; // Get in in seconds
@@ -124,28 +130,54 @@
             ctx.lineTo(pt2.cur_x, pt2.cur_y);
             ctx.stroke();
 
-            ctx.beginPath();
             ctx.strokeStyle = "black"; // Green path
             const pts = [
-                { x: 100, y: 200 },
-                { x: 80, y: 100 },
-                { x: 200, y: 100 },
-                { x: 230, y: 200 },
-                { x: 300, y: 120 }
+                { x: 100, y: 300 },
+                { x: 60, y: 100 }, 
+                { x: 300, y: 100 },
+                { x: 360, y: 300 },
+                { x: 400, y: 140 } 
             ];
-            for (var i = 0; i < 100; i++) {
-                const bezier_val_start = bezier(pts, i / 100);
-                const bezier_val_end = bezier(pts, (i + 1) / 100);
-                var t_variation = ((new Date()).getTime()+i) / 1000;
-                var x_start = bezier_val_start.x+ 10*Math.cos(t_variation);
-                var x_end = bezier_val_end.x + 10*Math.cos(t_variation);;
-                var y_start = bezier_val_start.y;
-                var y_end = bezier_val_end.y;
-                ctx.moveTo(x_start, y_start);
-                ctx.lineTo(x_end, y_end);
-            }
-            ctx.stroke();
+            const num_curve_pts = 1000;
+            const bezier_curve_segment_pts = [];
+            const t_add = (new Date().getTime()) % 500 * 2 * Math.PI / 500.0;
+            for (let i = 0; i < num_curve_pts; i++) {
+                const bezier_val = bezier(pts, i / (num_curve_pts - 1));
+                const x = bezier_val.x;
+                const y = bezier_val.y;
+                let x_add = 0;
+                let y_add = 0;
+                if (i > 0 && i < num_curve_pts - 1) {
+                    const amplitude_factor = 2;
+                    const freq = 5;
+                    const added_amplitude = amplitude_factor * Math.sin(t_add + freq * i * 2 * Math.PI / (num_curve_pts - 1));
+                    // Normal for 2d line (x1,y1), (x2,y2) ==>
+                    //  (y1-y2, x2-x1) and (y2-y1, x1-x2)
+                    const dx = x - bezier_curve_segment_pts[i - 1].base_x;
+                    const dy = y - bezier_curve_segment_pts[i - 1].base_y;
+                    const normal_start_pt = {
+                        x: -dy,
+                        y: dx
+                    };
+                    const normal = normal_start_pt;
+                    const normalized_normal = normalize(normal.x, normal.y);
+                    x_add = added_amplitude * normalized_normal.x;
+                    y_add = added_amplitude * normalized_normal.y;
+                }
 
+                bezier_curve_segment_pts.push({ base_x: x, base_y: y, cur_x: x + x_add, cur_y: y + y_add });
+
+            }
+            for (let i = 0; i < num_curve_pts - 1; i++) {
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(" + 255 * i / num_curve_pts + ",128,128)";
+                ctx.lineWidth = 3;
+                const start = bezier_curve_segment_pts[i];
+                const end = bezier_curve_segment_pts[i+1];
+                ctx.moveTo(start.cur_x, start.cur_y);
+                ctx.lineTo(end.cur_x, end.cur_y);
+                ctx.stroke();
+            }
 
             for (var i = 0; i < pts.length; i++) {
                 ctx.beginPath();
