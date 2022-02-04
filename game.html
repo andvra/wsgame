@@ -107,6 +107,14 @@
             return { x: x / d, y: y / d };
         }
 
+        let pts = [
+            { x: 100, y: 300 },
+            { x: 60, y: 100 }, 
+            { x: 300, y: 100 },
+            { x: 360, y: 300 },
+            { x: 400, y: 140 } 
+        ];
+
         function draw() {
             var t_now = (new Date()).getTime();
             var t_delta = (t_now - t_last) / 1000; // Get in in seconds
@@ -131,13 +139,6 @@
             ctx.stroke();
 
             ctx.strokeStyle = "black"; // Green path
-            const pts = [
-                { x: 100, y: 300 },
-                { x: 60, y: 100 }, 
-                { x: 300, y: 100 },
-                { x: 360, y: 300 },
-                { x: 400, y: 140 } 
-            ];
             const num_curve_pts = 1000;
             const bezier_curve_segment_pts = [];
             const t_add = (new Date().getTime()) % 500 * 2 * Math.PI / 500.0;
@@ -189,7 +190,7 @@
         }
         var ws;
         function ws_init() {
-            ws = new WebSocket("ws://192.168.1.70:9002");
+            ws = new WebSocket("ws://172.20.224.1:9002");
             ws.onopen = function (e) {
                 console.log('WebSocket Opened. Sending message..');
                 ws_send_message("Hi I'm a client" + Math.random());
@@ -197,6 +198,9 @@
 
             ws.onmessage = function (e) {
                 console.log('Received:', e.data);
+                const json = JSON.parse(e.data);
+                const new_pts = json.pts;
+                pts = new_pts;
             };
         }
         function ws_send_message(msg) {

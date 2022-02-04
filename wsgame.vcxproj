@@ -140,10 +140,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="broadcast_server.cpp" />
+    <ClCompile Include="game.cpp" />
     <ClCompile Include="wsgame.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="broadcast_server.h" />
+    <ClInclude Include="game.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="README.md" />
