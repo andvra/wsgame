@@ -36,4 +36,7 @@
   <ItemGroup>
     <Text Include="README.md" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="game.js" />
+  </ItemGroup>
 </Project>

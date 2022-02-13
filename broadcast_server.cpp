@@ -1,3 +1,6 @@
+#include <websocketpp/connection.hpp>
+#include <websocketpp/endpoint.hpp>
+
 #include "broadcast_server.h"
 
 broadcast_server::broadcast_server()
@@ -9,16 +12,29 @@ broadcast_server::broadcast_server()
     m_server.set_open_handler(bind(&broadcast_server::on_open, this, ::_1));
     m_server.set_close_handler(bind(&broadcast_server::on_close, this, ::_1));
     m_server.set_message_handler(bind(&broadcast_server::on_message, this, ::_1, ::_2));
+
+    set_log_levels();
 }
 
-void broadcast_server::run(uint16_t port, std::function<void(std::string)> client_message_callback) {
+void broadcast_server::set_log_levels()
+{
+    // Disable outputing frame information to the console
+    m_server.clear_access_channels(websocketpp::log::alevel::frame_header | websocketpp::log::alevel::frame_payload);
+}
+
+void broadcast_server::run(uint16_t port,
+    std::function<void(unsigned int, std::string)> client_msg_callback_fn,
+    std::function<void(unsigned int)> client_connect_callback_fn,
+    std::function<void(unsigned int)> client_disconnect_callback_fn) {
     // listen on specified port
     m_server.listen(port);
 
     // Start the server accept loop
     m_server.start_accept();
 
-    client_msg_callback = client_message_callback;
+    client_msg_callback = client_msg_callback_fn;
+    client_connect_callback = client_connect_callback_fn;
+    client_disconnect_callback = client_disconnect_callback_fn;
 
     // Start the ASIO io_service run loop
     try {
@@ -71,6 +87,29 @@ void broadcast_server::post_data(std::string msg)
     }
 }
 
+std::string broadcast_server::get_connection_address(const connection_hdl& hdl)
+{
+    auto ep = m_server.get_con_from_hdl(hdl)->get_raw_socket().remote_endpoint();
+    auto address = ep.address().to_string();
+
+    return address;
+}
+
+int broadcast_server::get_connection_port(const connection_hdl& hdl)
+{
+    auto ep = m_server.get_con_from_hdl(hdl)->get_raw_socket().remote_endpoint();
+    auto port = ep.port();
+
+    return port;
+}
+
+unsigned int broadcast_server::get_connection_id(const connection_hdl& hdl)
+{
+    auto ret = *(int*)hdl.lock().get();
+
+    return ret;
+}
+
 void broadcast_server::process_messages() {
     while (1) {
         unique_lock<mutex> lock(m_action_lock);
@@ -84,18 +123,22 @@ void broadcast_server::process_messages() {
 
         lock.unlock();
 
+        auto client_id = get_connection_id(a.hdl);
+        
         if (a.type == SUBSCRIBE) {
             lock_guard<mutex> guard(m_connection_lock);
             m_connections.insert(a.hdl);
+            client_connect_callback(client_id);
         }
         else if (a.type == UNSUBSCRIBE) {
             lock_guard<mutex> guard(m_connection_lock);
             m_connections.erase(a.hdl);
+            client_disconnect_callback(client_id);
         }
         else if (a.type == MESSAGE) {
             lock_guard<mutex> guard(m_connection_lock);
             auto payload = a.msg.get()->get_payload();
-            client_msg_callback(payload);
+            client_msg_callback(client_id, payload);
         }
         else {
             // undefined.
