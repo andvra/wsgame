@@ -200,9 +200,8 @@ function draw() {
 
 }
 var ws;
-function ws_init() {
-    const ip = "192.168.1.70";
-    const addr = "ws://" + ip + ":9002";
+function ws_init(ip_address) {
+    const addr = "ws://" + ip_address + ":9002";
     ws = new WebSocket(addr);
     ws.onopen = function (e) {
         console.log('WebSocket Opened. Sending message..');
@@ -232,7 +231,6 @@ function get_message() {
     return msg;
 }
 
-ws_init();
 setInterval(draw, 10);
 const log = document.getElementById('log');
 var keys = [false, false, false, false];
@@ -274,6 +272,13 @@ function logKeyDown(e) {
 
 function logKeyUp(e) {
     logkey(e, false);
+}
+
+function click_connect() {
+    var ip = document.getElementById('ip').value;
+    if (ip) {
+        ws_init(ip);
+    }
 }
 
 document.addEventListener('keydown', logKeyDown);

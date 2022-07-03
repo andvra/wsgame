@@ -2,9 +2,13 @@
 <body>
     <canvas id="myCanvas" width="800" height="600" style="border:1px solid #000000;">
     </canvas>
+    <br/>
     <input type="text" id="msg" />
     <button onclick="ws_send_message(get_message());">Send message</button>
     <input type="text" id="log" disabled />
+    <br/>
+    <input type="text" id="ip" value="127.0.0.1"/>
+    <button onclick="click_connect()">Connect</button>
     <script src="game.js"></script>
 </body>
 </html>
